@@ -6,8 +6,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f0f0f0">
+<meta name="theme-color" content="#1565c0">
 <title>FlowDoc</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lustria&display=swap">
 <style>
@@ -1047,17 +1049,22 @@ if (window.visualViewport) {
   update()
 }
 
-// Document scale — always fit viewport width, no horizontal scroll
+// Document scale — column always represents exactly 8.5-inch paper width.
+// document.documentElement.clientWidth is the CSS layout viewport width;
+// it is stable (does NOT change when the virtual keyboard opens) and is
+// always correct on both desktop and mobile.
 const editorCol = document.getElementById('editor-column')
-const editorScroll = document.getElementById('editor-scroll')
 function updateDocScale() {
-  const avail = editorScroll.clientWidth - 16
-  const scale = Math.min(1, avail / 816)
+  const vpW = document.documentElement.clientWidth
+  if (!vpW) return  // layout not yet computed — rAF will retry
+  const scale = vpW >= 816 ? 1 : vpW / 816
   editorCol.style.zoom = scale
 }
+// Resize fires on orientation change and window resize; NOT on keyboard show/hide
 window.addEventListener('resize', updateDocScale)
-if (window.visualViewport) window.visualViewport.addEventListener('resize', updateDocScale)
+// Run immediately, then again after first paint to catch any late layout pass
 updateDocScale()
+requestAnimationFrame(updateDocScale)
 
 // ─────────────────────────────────────────────
 // File handlers
@@ -1584,6 +1591,14 @@ async function exportDocx() {
   }, { level: 6 })
 
   return new Blob([zipped], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+}
+
+// ─────────────────────────────────────────────
+// PWA — register service worker
+// ─────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .catch(err => console.warn('SW registration failed:', err))
 }
 
 </script>
