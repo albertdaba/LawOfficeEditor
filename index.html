@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,interactive-widget=resizes-content">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f0f0f0">
+<title>FlowDoc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lustria&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:Arial,sans-serif;-webkit-text-size-adjust:100%}
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden;background:#ddd}
+
+/* ── Toolbar ── */
+#toolbar{flex-shrink:0;background:#f0f0f0;border-bottom:1px solid #bbb;user-select:none}
+.tb-row{display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:3px 6px;min-height:36px}
+.tb-group{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.tb-sep{width:1px;height:20px;background:#bbb;margin:0 3px;flex-shrink:0}
+button.tb{min-width:28px;height:26px;padding:0 5px;border:1px solid transparent;border-radius:3px;
+  background:transparent;font-size:12px;cursor:pointer;white-space:nowrap;color:#222;
+  display:flex;align-items:center;justify-content:center}
+button.tb:hover{background:#e0e0e0;border-color:#aaa}
+button.tb.on{background:#cce4ff;border-color:#6aa}
+button.tb:disabled{opacity:.4;cursor:default;pointer-events:none}
+select.tb{height:26px;border:1px solid #bbb;border-radius:3px;background:#fff;
+  font-size:12px;cursor:pointer;padding:0 3px}
+select.tb.style{min-width:100px}
+select.tb.font{min-width:140px;max-width:160px}
+select.tb.size{width:54px}
+.color-wrap{position:relative;cursor:pointer}
+.color-wrap input[type=color]{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
+.color-swatch{display:flex;align-items:center;justify-content:center;width:28px;height:26px;
+  border:1px solid #bbb;border-radius:3px;font-size:13px;font-weight:700;cursor:pointer}
+.color-wrap:hover .color-swatch{background:#e0e0e0}
+
+/* Popovers */
+.popover{position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #ccc;
+  border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:500;min-width:160px;padding:5px 0}
+.pop-item{display:block;width:100%;text-align:left;padding:6px 12px;border:none;
+  background:none;cursor:pointer;font-size:13px;white-space:nowrap}
+.pop-item:hover{background:#f0f0f0}
+.pop-label{padding:4px 12px 2px;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.05em}
+.pop-sep{height:1px;background:#eee;margin:3px 0}
+.pw{position:relative}
+.grid6x8{display:grid;grid-template-columns:repeat(8,18px);gap:2px;padding:6px 8px}
+.gc{width:18px;height:18px;border:1px solid #ccc;border-radius:2px;cursor:pointer}
+.gc:hover,.gc.s{background:#cce4ff;border-color:#6aa}
+.grid-label{text-align:center;font-size:11px;color:#666;padding-bottom:6px}
+
+/* ── Bubble menu ── */
+#bubble{display:flex;gap:2px;background:#222;border-radius:6px;padding:3px;
+  position:absolute;z-index:600;pointer-events:all}
+#bubble button{color:#fff;background:transparent;border:1px solid transparent;border-radius:3px;
+  padding:4px 7px;font-size:12px;cursor:pointer;min-width:26px}
+#bubble button:hover{background:#444}
+#bubble button.on{background:#555;border-color:#888}
+
+/* ── Editor scroll ── */
+#editor-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 14px 40px;
+  -webkit-overflow-scrolling:touch}
+#editor-column{width:816px;margin:0 auto;background:#fff;padding:48px 60px;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);border-radius:2px}
+
+/* ── ProseMirror ── */
+.ProseMirror{outline:none;min-height:60vh;font-size:12pt;line-height:1.6;color:#111;hyphens:auto;font-family:'Lustria',Georgia,serif}
+.ProseMirror p{margin:0}
+.ProseMirror h1{font-size:2em;margin:.4em 0 .2em}
+.ProseMirror h2{font-size:1.5em;margin:.4em 0 .2em}
+.ProseMirror h3{font-size:1.25em;margin:.4em 0 .2em}
+.ProseMirror h4,.ProseMirror h5,.ProseMirror h6{font-size:1em;font-weight:700;margin:.4em 0 .2em}
+.ProseMirror ul,.ProseMirror ol{padding-left:1.5em;margin:.2em 0}
+.ProseMirror li{margin:.1em 0}
+.ProseMirror a{color:#1a6bbf;text-decoration:underline;cursor:pointer}
+.ProseMirror img{max-width:100%;height:auto}
+.ProseMirror p.is-editor-empty:first-child::before{content:'Start typing…';color:#bbb;float:left;height:0;pointer-events:none}
+/* Tables */
+.ProseMirror .tableWrapper{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.ProseMirror table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:150px}
+.ProseMirror td,.ProseMirror th{border:1px solid #ccc;padding:5px 8px;min-width:30px;
+  vertical-align:top;position:relative;overflow-wrap:break-word}
+.ProseMirror th{background:#f4f4f4;font-weight:700}
+.ProseMirror .selectedCell::after{content:'';position:absolute;inset:0;
+  background:rgba(150,200,255,.3);pointer-events:none;z-index:2}
+.ProseMirror .column-resize-handle{position:absolute;right:-2px;top:0;bottom:0;
+  width:4px;cursor:col-resize;background:#aac;z-index:20}
+.resize-cursor{cursor:col-resize}
+
+/* ── Mobile bar (tabbed) ── */
+#mbar{position:fixed;left:0;right:0;bottom:0;background:#f8f8f8;border-top:1px solid #ccc;
+  z-index:1000;padding-bottom:env(safe-area-inset-bottom)}
+.mpanel{display:none;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  padding:5px 8px;gap:5px;min-height:50px;scrollbar-width:none}
+.mpanel::-webkit-scrollbar{display:none}
+.mpanel.active{display:flex}
+#mbar-tabs{display:flex;border-top:1px solid #ddd;background:#efefef}
+.mtab{flex:1;height:34px;font-size:11px;font-weight:600;background:transparent;border:none;
+  border-top:2px solid transparent;cursor:pointer;color:#777;letter-spacing:.03em;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.mtab.active{color:#1a6bbf;border-top-color:#1a6bbf;background:#f2f7ff}
+button.mb{flex-shrink:0;min-width:44px;height:40px;padding:0 10px;border:1px solid transparent;
+  border-radius:6px;background:transparent;font-size:14px;cursor:pointer;white-space:nowrap;
+  color:#222;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center}
+button.mb:active,button.mb.on{background:#ddeeff;border-color:#6aace0}
+button.mb.danger{color:#c00}
+.mb-sep{width:1px;height:24px;background:#ccc;flex-shrink:0;margin:0 2px}
+.mb-size-row{display:flex;align-items:center;flex-shrink:0;
+  background:#fff;border:1px solid #ccc;border-radius:6px;overflow:hidden;height:40px}
+.mb-size-row button{min-width:36px;height:40px;border:none;background:transparent;
+  font-size:20px;cursor:pointer;color:#333;touch-action:manipulation;padding:0}
+.mb-size-row button:active{background:#eee}
+.mb-size-num{min-width:30px;text-align:center;font-size:13px;color:#333;
+  line-height:40px;user-select:none;padding:0 2px}
+select.mb-sel{height:40px;border:1px solid #ccc;border-radius:6px;
+  background:#fff;font-size:13px;padding:0 4px;flex-shrink:1}
+.mb-color-wrap{flex-shrink:0;position:relative;cursor:pointer}
+.mb-color-wrap input[type=color]{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
+.mb-color-btn{min-width:44px;height:40px;border:1px solid #ccc;border-radius:6px;
+  background:transparent;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.mb-color-wrap:active .mb-color-btn{background:#eee}
+
+/* ── Bottom sheets ── */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet-overlay.open{opacity:1;pointer-events:all}
+.bottom-sheet{position:fixed;left:0;right:0;bottom:0;background:#fff;
+  border-radius:16px 16px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,.2);z-index:900;
+  padding-bottom:env(safe-area-inset-bottom);
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.32,0,.67,0)}
+.bottom-sheet.open{transform:translateY(0)}
+.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:10px auto 2px}
+.sheet-title{font-size:16px;font-weight:600;text-align:center;padding:8px 0 12px;color:#111}
+.sheet-body{padding:0 16px 24px;overflow-y:auto;max-height:52vh}
+.sheet-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:4px 0}
+.sheet-gc{aspect-ratio:1;border:1px solid #ddd;border-radius:3px;cursor:pointer;background:#fafafa;touch-action:manipulation}
+.sheet-gc.s{background:#ddeeff;border-color:#6aace0}
+.sheet-grid-label{text-align:center;font-size:13px;color:#777;margin:6px 0 16px}
+.font-btn{display:block;width:100%;text-align:left;padding:13px 4px;border:none;
+  background:none;font-size:16px;cursor:pointer;border-bottom:1px solid #f2f2f2;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.font-btn:active,.font-btn.on{background:#ddeeff}
+.spacing-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.05em;
+  padding:4px 0 8px}
+.spacing-row{display:flex;gap:8px;margin-bottom:16px}
+.spacing-btn{flex:1;height:50px;border:1px solid #ddd;border-radius:10px;background:#fff;
+  font-size:14px;cursor:pointer;touch-action:manipulation}
+.spacing-btn.on{background:#ddeeff;border-color:#6aace0}
+
+/* ── Mobile top bar ── */
+#mbar-top{display:none}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  #toolbar{display:none}
+  #editor-scroll{padding:8px 0 110px;background:#ddd}
+
+  #mbar-top{
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;overflow:hidden;
+    height:44px;max-height:44px;
+    background:#f0f0f0;border-bottom:1px solid #ccc;
+    padding:0 14px;
+    transition:max-height .22s ease, padding .22s ease, border-color .22s;
+    user-select:none;-webkit-tap-highlight-color:transparent
+  }
+  #mbar-top.mbt-hidden{
+    max-height:0;padding-top:0;padding-bottom:0;border-bottom-color:transparent
+  }
+  .mbt-logo{font-size:15px;font-weight:700;color:#333;letter-spacing:.02em}
+  .mbt-btns{display:flex;gap:6px}
+  .mbt-btn{height:34px;padding:0 12px;border:1px solid #ccc;border-radius:8px;
+    background:#fff;font-size:13px;cursor:pointer;color:#222;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .mbt-btn:active{background:#ddeeff;border-color:#6aace0}
+}
+@media(min-width:641px){
+  #mbar{display:none}
+  .sheet-overlay,.bottom-sheet{display:none}
+}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;
+  align-items:center;justify-content:center;z-index:9999;font-size:15px;color:#555}
+#loading.hide{display:none}
+/* Import toast */
+#import-toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+  background:#222;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;
+  z-index:9998;white-space:nowrap;display:none;max-width:90vw;text-align:center}
+#import-toast.show{display:block}
+</style>
+</head>
+<body>
+<div id="loading">Loading editor…</div>
+<div id="import-toast"></div>
+<div id="app">
+  <!-- MOBILE TOP BAR -->
+  <div id="mbar-top">
+    <span class="mbt-logo">FlowDoc</span>
+    <div class="mbt-btns">
+      <button class="mbt-btn" id="mbt-new">New</button>
+      <label for="file-input" class="mbt-btn">📂 Open</label>
+      <button class="mbt-btn" id="mbt-save">💾 Save</button>
+    </div>
+  </div>
+
+  <!-- DESKTOP TOOLBAR -->
+  <div id="toolbar">
+    <div class="tb-row">
+      <div class="tb-group">
+        <button class="tb" id="tb-new" title="New">New</button>
+        <label for="file-input" class="tb" title="Open .docx" style="cursor:pointer">Open</label>
+        <button class="tb" id="tb-save" title="Save .docx">Save</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <select class="tb style" id="tb-style" title="Style">
+          <option value="p">Normal</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+          <option value="h4">Heading 4</option>
+          <option value="h5">Heading 5</option>
+          <option value="h6">Heading 6</option>
+        </select>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <select class="tb font" id="tb-font" title="Font">
+          <option selected>Lustria</option>
+          <option>Arial</option>
+          <option>Times New Roman</option>
+          <option>Courier New</option>
+          <option>Georgia</option>
+          <option>Verdana</option>
+          <option>Calibri</option>
+          <option>Garamond</option>
+        </select>
+        <select class="tb size" id="tb-size" title="Size">
+          <option>8</option><option>9</option><option>10</option>
+          <option>11</option><option selected>12</option><option>14</option>
+          <option>16</option><option>18</option><option>20</option>
+          <option>24</option><option>28</option><option>36</option>
+          <option>48</option><option>72</option>
+        </select>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-bold" title="Bold (Ctrl+B)"><b>B</b></button>
+        <button class="tb" id="tb-italic" title="Italic (Ctrl+I)"><i>I</i></button>
+        <button class="tb" id="tb-underline" title="Underline (Ctrl+U)"><u>U</u></button>
+        <button class="tb" id="tb-strike" title="Strikethrough"><s>S</s></button>
+        <button class="tb" id="tb-super" title="Superscript">x²</button>
+        <button class="tb" id="tb-sub" title="Subscript">x₂</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <label class="color-wrap" title="Text color">
+          <span class="color-swatch" id="swatch-color" style="border-bottom:3px solid #000">A</span>
+          <input type="color" id="tb-color" value="#000000">
+        </label>
+        <label class="color-wrap" title="Highlight">
+          <span class="color-swatch" id="swatch-hl" style="background:#ffff00">H</span>
+          <input type="color" id="tb-highlight" value="#ffff00">
+        </label>
+      </div>
+    </div>
+    <div class="tb-row">
+      <div class="tb-group">
+        <button class="tb" id="tb-al" title="Align left">⬅</button>
+        <button class="tb" id="tb-ac" title="Center">↔</button>
+        <button class="tb" id="tb-ar" title="Align right">➡</button>
+        <button class="tb" id="tb-aj" title="Justify">&#9646;</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group pw">
+        <button class="tb" id="tb-spacing" title="Spacing">↕ Spacing</button>
+        <div class="popover" id="pop-spacing" style="display:none">
+          <div class="pop-label">Line spacing</div>
+          <button class="pop-item" data-lh="1">Single</button>
+          <button class="pop-item" data-lh="1.15">1.15</button>
+          <button class="pop-item" data-lh="1.5">1.5</button>
+          <button class="pop-item" data-lh="2">Double</button>
+          <div class="pop-sep"></div>
+          <div class="pop-label">Para spacing</div>
+          <button class="pop-item" data-sp="0,0">None</button>
+          <button class="pop-item" data-sp="6,6">6pt above &amp; below</button>
+          <button class="pop-item" data-sp="12,12">12pt above &amp; below</button>
+        </div>
+        <button class="tb" id="tb-indent-in" title="Increase indent">⇥</button>
+        <button class="tb" id="tb-indent-out" title="Decrease indent">⇤</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-ul" title="Bullet list">• List</button>
+        <button class="tb" id="tb-ol" title="Numbered list">1. List</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group pw">
+        <button class="tb" id="tb-table" title="Insert table">⊞ Table</button>
+        <div class="popover" id="pop-table" style="display:none;min-width:180px">
+          <div class="grid6x8" id="tbl-grid"></div>
+          <div class="grid-label" id="tbl-label">3 × 3</div>
+        </div>
+        <label for="img-input" class="tb" title="Insert image" style="cursor:pointer">🖼 Image</label>
+        <button class="tb" id="tb-link" title="Link">🔗 Link</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-undo" title="Undo">↩</button>
+        <button class="tb" id="tb-redo" title="Redo">↪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor-scroll">
+    <div id="editor-column">
+      <div id="editor"></div>
+    </div>
+  </div>
+
+  <!-- MOBILE BAR -->
+  <div id="mbar">
+    <!-- Panel: Text -->
+    <div class="mpanel active" id="mp-text">
+      <button class="mb" id="mb-bold"><b>B</b></button>
+      <button class="mb" id="mb-italic"><i>I</i></button>
+      <button class="mb" id="mb-underline"><u>U</u></button>
+      <button class="mb" id="mb-strike"><s>S</s></button>
+      <button class="mb" id="mb-super" style="font-size:12px">x²</button>
+      <button class="mb" id="mb-sub" style="font-size:12px">x₂</button>
+      <div class="mb-sep"></div>
+      <div class="mb-color-wrap">
+        <button class="mb-color-btn" id="mb-color-btn">A</button>
+        <input type="color" id="mb-color-input" value="#000000">
+      </div>
+      <div class="mb-sep"></div>
+      <div class="mb-size-row">
+        <button id="mb-size-dec">−</button>
+        <span class="mb-size-num" id="mb-size-num">12</span>
+        <button id="mb-size-inc">+</button>
+      </div>
+    </div>
+    <!-- Panel: Para -->
+    <div class="mpanel" id="mp-para">
+      <button class="mb" id="mb-al">⬅</button>
+      <button class="mb" id="mb-ac">↔</button>
+      <button class="mb" id="mb-ar">➡</button>
+      <button class="mb" id="mb-aj">&#9646;</button>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-ul">• List</button>
+      <button class="mb" id="mb-ol">1. List</button>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-indent-in">⇥</button>
+      <button class="mb" id="mb-indent-out">⇤</button>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-spacing">↕ Spacing</button>
+    </div>
+    <!-- Panel: Style -->
+    <div class="mpanel" id="mp-style">
+      <select class="mb-sel" id="mb-hstyle" style="min-width:120px">
+        <option value="p">Normal</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+        <option value="h5">Heading 5</option>
+        <option value="h6">Heading 6</option>
+      </select>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-font-open" style="min-width:100px;max-width:160px">
+        <span id="mb-font-label">Lustria</span>&nbsp;▾
+      </button>
+    </div>
+    <!-- Panel: Insert -->
+    <div class="mpanel" id="mp-insert">
+      <label for="file-input" class="mb">📂 Open</label>
+      <button class="mb" id="mb-save">💾 Save</button>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-undo">↩</button>
+      <button class="mb" id="mb-redo">↪</button>
+      <div class="mb-sep"></div>
+      <button class="mb" id="mb-table">⊞ Table</button>
+      <label for="img-input" class="mb">🖼 Image</label>
+      <button class="mb" id="mb-link">🔗 Link</button>
+    </div>
+    <!-- Tab bar -->
+    <div id="mbar-tabs">
+      <button class="mtab active" data-panel="mp-text">TEXT</button>
+      <button class="mtab" data-panel="mp-para">PARA</button>
+      <button class="mtab" data-panel="mp-style">STYLE</button>
+      <button class="mtab" data-panel="mp-insert">INSERT</button>
+    </div>
+  </div>
+
+  <!-- Bottom sheet overlay -->
+  <div class="sheet-overlay" id="sheet-overlay"></div>
+
+  <!-- Table sheet -->
+  <div class="bottom-sheet" id="sheet-table">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Insert Table</div>
+    <div class="sheet-body">
+      <div class="sheet-grid" id="sheet-tbl-grid"></div>
+      <div class="sheet-grid-label" id="sheet-tbl-label">3 × 3</div>
+    </div>
+  </div>
+
+  <!-- Font sheet -->
+  <div class="bottom-sheet" id="sheet-font">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Font</div>
+    <div class="sheet-body" id="sheet-font-body"></div>
+  </div>
+
+  <!-- Spacing sheet -->
+  <div class="bottom-sheet" id="sheet-spacing">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Spacing</div>
+    <div class="sheet-body">
+      <div class="spacing-label">Line spacing</div>
+      <div class="spacing-row">
+        <button class="spacing-btn" data-lh="1">Single</button>
+        <button class="spacing-btn" data-lh="1.15">1.15</button>
+        <button class="spacing-btn" data-lh="1.5">1.5</button>
+        <button class="spacing-btn" data-lh="2">Double</button>
+      </div>
+      <div class="spacing-label">Paragraph spacing</div>
+      <div class="spacing-row">
+        <button class="spacing-btn" data-sp="0,0">None</button>
+        <button class="spacing-btn" data-sp="6,6">6pt</button>
+        <button class="spacing-btn" data-sp="12,12">12pt</button>
+        <button class="spacing-btn" data-sp="18,18">18pt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden inputs -->
+<input type="file" id="file-input" accept=".docx" style="display:none">
+<input type="file" id="img-input" accept="image/*" style="display:none">
+
+<!-- Bubble menu element (TipTap will position it) -->
+<div id="bubble" style="display:none">
+  <button id="bb-bold"><b>B</b></button>
+  <button id="bb-italic"><i>I</i></button>
+  <button id="bb-underline"><u>U</u></button>
+  <button id="bb-link">🔗</button>
+  <button id="bb-unlink" title="Remove link">✕</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "@tiptap/core":                        "https://esm.sh/@tiptap/core@2.10.3",
+    "@tiptap/starter-kit":                 "https://esm.sh/@tiptap/starter-kit@2.10.3",
+    "@tiptap/extension-underline":         "https://esm.sh/@tiptap/extension-underline@2.10.3",
+    "@tiptap/extension-text-style":        "https://esm.sh/@tiptap/extension-text-style@2.10.3",
+    "@tiptap/extension-color":             "https://esm.sh/@tiptap/extension-color@2.10.3",
+    "@tiptap/extension-highlight":         "https://esm.sh/@tiptap/extension-highlight@2.10.3",
+    "@tiptap/extension-font-family":       "https://esm.sh/@tiptap/extension-font-family@2.10.3",
+    "@tiptap/extension-text-align":        "https://esm.sh/@tiptap/extension-text-align@2.10.3",
+    "@tiptap/extension-superscript":       "https://esm.sh/@tiptap/extension-superscript@2.10.3",
+    "@tiptap/extension-subscript":         "https://esm.sh/@tiptap/extension-subscript@2.10.3",
+    "@tiptap/extension-link":              "https://esm.sh/@tiptap/extension-link@2.10.3",
+    "@tiptap/extension-image":             "https://esm.sh/@tiptap/extension-image@2.10.3",
+    "@tiptap/extension-table":             "https://esm.sh/@tiptap/extension-table@2.10.3",
+    "@tiptap/extension-table-row":         "https://esm.sh/@tiptap/extension-table-row@2.10.3",
+    "@tiptap/extension-table-cell":        "https://esm.sh/@tiptap/extension-table-cell@2.10.3",
+    "@tiptap/extension-table-header":      "https://esm.sh/@tiptap/extension-table-header@2.10.3",
+    "@tiptap/extension-typography":        "https://esm.sh/@tiptap/extension-typography@2.10.3",
+    "@tiptap/extension-bubble-menu":       "https://esm.sh/@tiptap/extension-bubble-menu@2.10.3",
+    "fflate":                              "https://esm.sh/fflate@0.8.2"
+  }
+}
+</script>
+
+<script type="module">
+import { Editor, Extension } from '@tiptap/core'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import TextStyle from '@tiptap/extension-text-style'
+import { Color } from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import FontFamily from '@tiptap/extension-font-family'
+import TextAlign from '@tiptap/extension-text-align'
+import Superscript from '@tiptap/extension-superscript'
+import Subscript from '@tiptap/extension-subscript'
+import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import Typography from '@tiptap/extension-typography'
+import BubbleMenu from '@tiptap/extension-bubble-menu'
+import { unzipSync, zipSync, strToU8, strFromU8 } from 'fflate'
+
+// ─────────────────────────────────────────────
+// Custom extensions
+// ─────────────────────────────────────────────
+
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addOptions() { return { types: ['textStyle'] } },
+  addGlobalAttributes() {
+    return [{ types: this.options.types, attributes: {
+      fontSize: {
+        default: null,
+        parseHTML: el => el.style.fontSize || null,
+        renderHTML: a => a.fontSize ? { style: `font-size:${a.fontSize}` } : {},
+      }
+    }}]
+  },
+  addCommands() {
+    return {
+      setFontSize: s => ({ chain }) => chain().setMark('textStyle', { fontSize: s }).run(),
+      unsetFontSize: () => ({ chain }) => chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
+    }
+  }
+})
+
+const LineHeight = Extension.create({
+  name: 'lineHeight',
+  addOptions() { return { types: ['paragraph', 'heading'] } },
+  addGlobalAttributes() {
+    return [{ types: this.options.types, attributes: {
+      lineHeight: {
+        default: null,
+        parseHTML: el => el.style.lineHeight || null,
+        renderHTML: a => a.lineHeight ? { style: `line-height:${a.lineHeight}` } : {},
+      }
+    }}]
+  },
+  addCommands() {
+    return {
+      setLineHeight: v => ({ commands }) =>
+        this.options.types.every(t => commands.updateAttributes(t, { lineHeight: v })),
+    }
+  }
+})
+
+const ParagraphSpacing = Extension.create({
+  name: 'paragraphSpacing',
+  addOptions() { return { types: ['paragraph', 'heading'] } },
+  addGlobalAttributes() {
+    return [{ types: this.options.types, attributes: {
+      spaceBefore: {
+        default: 0,
+        parseHTML: el => parseFloat(el.style.marginTop) || 0,
+        renderHTML: a => {
+          const s = []
+          if (a.spaceBefore) s.push(`margin-top:${a.spaceBefore}pt`)
+          if (a.spaceAfter)  s.push(`margin-bottom:${a.spaceAfter}pt`)
+          return s.length ? { style: s.join(';') } : {}
+        },
+      },
+      spaceAfter: {
+        default: 0,
+        parseHTML: el => parseFloat(el.style.marginBottom) || 0,
+        renderHTML: () => ({}),
+      },
+    }}]
+  },
+  addCommands() {
+    return {
+      setParagraphSpacing: o => ({ commands }) =>
+        this.options.types.every(t => commands.updateAttributes(t, {
+          spaceBefore: o.before ?? 0, spaceAfter: o.after ?? 0
+        })),
+    }
+  }
+})
+
+const Indent = Extension.create({
+  name: 'indent',
+  addOptions() { return { types: ['paragraph', 'heading'], step: 36 } },
+  addGlobalAttributes() {
+    return [{ types: this.options.types, attributes: {
+      indentLeft: {
+        default: 0,
+        parseHTML: el => parseFloat(el.style.marginLeft) || 0,
+        renderHTML: a => {
+          const s = []
+          if (a.indentLeft)  s.push(`margin-left:${a.indentLeft}pt`)
+          if (a.textIndent)  s.push(`text-indent:${a.textIndent}pt`)
+          return s.length ? { style: s.join(';') } : {}
+        },
+      },
+      textIndent: {
+        default: 0,
+        parseHTML: el => parseFloat(el.style.textIndent) || 0,
+        renderHTML: () => ({}),
+      },
+    }}]
+  },
+  addCommands() {
+    return {
+      increaseIndent: () => ({ state, commands }) => {
+        const node = state.doc.nodeAt(state.selection.from)
+        const cur = node?.attrs?.indentLeft ?? 0
+        return commands.updateAttributes('paragraph', { indentLeft: cur + this.options.step })
+      },
+      decreaseIndent: () => ({ state, commands }) => {
+        const node = state.doc.nodeAt(state.selection.from)
+        const cur = node?.attrs?.indentLeft ?? 0
+        return commands.updateAttributes('paragraph', { indentLeft: Math.max(0, cur - this.options.step) })
+      },
+      setIndent: o => ({ commands }) =>
+        this.options.types.every(t => commands.updateAttributes(t, {
+          indentLeft: o.left ?? 0,
+          textIndent: o.firstLine ?? (o.hanging ? -o.hanging : 0),
+        })),
+    }
+  },
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => this.editor.isActive('listItem') ? false : this.editor.commands.increaseIndent(),
+      'Shift-Tab': () => this.editor.isActive('listItem') ? false : this.editor.commands.decreaseIndent(),
+    }
+  }
+})
+
+// ─────────────────────────────────────────────
+// Editor init
+// ─────────────────────────────────────────────
+
+let fileName = 'document'
+let docPageSetup = { widthPt:612, heightPt:792, marginTopPt:72, marginRightPt:72, marginBottomPt:72, marginLeftPt:72 }
+let embeddedFonts = []
+let twipScale = 696 / 9360 // px per twip — 696px content area, 9360 twips = US Letter minus 1" margins
+
+const editor = new Editor({
+  element: document.getElementById('editor'),
+  extensions: [
+    StarterKit.configure({ heading: { levels:[1,2,3,4,5,6] } }),
+    Underline, TextStyle, Color,
+    Highlight.configure({ multicolor: true }),
+    FontFamily, FontSize,
+    TextAlign.configure({ types: ['heading','paragraph'] }),
+    Superscript, Subscript,
+    Link.configure({ openOnClick: false }),
+    Image.configure({ inline: true }),
+    Table.configure({ resizable: true }),
+    TableRow, TableCell, TableHeader,
+    Typography,
+    LineHeight, ParagraphSpacing, Indent,
+    BubbleMenu.configure({
+      element: document.getElementById('bubble'),
+      tippyOptions: { duration: 100 },
+    }),
+  ],
+  content: '<p></p>',
+  editorProps: {
+    attributes: { spellcheck: 'true' },
+  },
+  onUpdate() { syncToolbar() },
+  onSelectionUpdate() { syncToolbar() },
+})
+
+document.getElementById('loading').classList.add('hide')
+
+// ─────────────────────────────────────────────
+// Toolbar sync
+// ─────────────────────────────────────────────
+
+function syncToolbar() {
+  const e = editor
+  const set = (id, on) => document.getElementById(id)?.classList.toggle('on', on)
+
+  set('tb-bold',      e.isActive('bold'))
+  set('tb-italic',    e.isActive('italic'))
+  set('tb-underline', e.isActive('underline'))
+  set('tb-strike',    e.isActive('strike'))
+  set('tb-super',     e.isActive('superscript'))
+  set('tb-sub',       e.isActive('subscript'))
+  set('tb-al',  e.isActive({textAlign:'left'}))
+  set('tb-ac',  e.isActive({textAlign:'center'}))
+  set('tb-ar',  e.isActive({textAlign:'right'}))
+  set('tb-aj',  e.isActive({textAlign:'justify'}))
+  set('tb-ul',  e.isActive('bulletList'))
+  set('tb-ol',  e.isActive('orderedList'))
+
+  // mobile
+  set('mb-bold',      e.isActive('bold'))
+  set('mb-italic',    e.isActive('italic'))
+  set('mb-underline', e.isActive('underline'))
+  set('mb-strike',    e.isActive('strike'))
+  set('mb-super',     e.isActive('superscript'))
+  set('mb-sub',       e.isActive('subscript'))
+  set('mb-al',  e.isActive({textAlign:'left'}))
+  set('mb-ac',  e.isActive({textAlign:'center'}))
+  set('mb-ar',  e.isActive({textAlign:'right'}))
+  set('mb-aj',  e.isActive({textAlign:'justify'}))
+  set('mb-ul',  e.isActive('bulletList'))
+  set('mb-ol',  e.isActive('orderedList'))
+
+  // mobile style select
+  const msd = document.getElementById('mb-hstyle')
+  if (msd) {
+    let mv = 'p'
+    for (let i=1;i<=6;i++) if (e.isActive('heading',{level:i})) mv = 'h'+i
+    msd.value = mv
+  }
+
+  // mobile font size display
+  const mAttrs = e.getAttributes('textStyle')
+  if (mAttrs.fontSize) {
+    const pt = parseFloat(mAttrs.fontSize)
+    if (!isNaN(pt)) {
+      mbFontSize = pt
+      const sn = document.getElementById('mb-size-num')
+      if (sn) sn.textContent = String(pt)
+    }
+  }
+
+  // bubble
+  set('bb-bold',      e.isActive('bold'))
+  set('bb-italic',    e.isActive('italic'))
+  set('bb-underline', e.isActive('underline'))
+  set('bb-link',      e.isActive('link'))
+
+  // style dropdown
+  const sd = document.getElementById('tb-style')
+  if (sd) {
+    let v = 'p'
+    for (let i=1;i<=6;i++) if (e.isActive('heading',{level:i})) v = 'h'+i
+    sd.value = v
+  }
+
+  // font/size
+  const attrs = e.getAttributes('textStyle')
+  const fn = document.getElementById('tb-font')
+  if (fn && attrs.fontFamily) fn.value = attrs.fontFamily
+  const fs = document.getElementById('tb-size')
+  if (fs && attrs.fontSize) {
+    const pt = parseFloat(attrs.fontSize)
+    if (!isNaN(pt)) fs.value = String(pt)
+  }
+
+  // color swatches
+  if (attrs.color) {
+    const sw = document.getElementById('swatch-color')
+    if (sw) sw.style.borderBottomColor = attrs.color
+    const inp = document.getElementById('tb-color')
+    if (inp) inp.value = attrs.color
+  }
+
+  // undo/redo
+  const undo = document.getElementById('tb-undo')
+  const redo = document.getElementById('tb-redo')
+  if (undo) undo.disabled = !editor.can().undo()
+  if (redo) redo.disabled = !editor.can().redo()
+}
+
+// ─────────────────────────────────────────────
+// Toolbar wiring
+// ─────────────────────────────────────────────
+
+const on = (id, fn) => document.getElementById(id)?.addEventListener('click', fn)
+const onpd = (id, fn) => document.getElementById(id)?.addEventListener('pointerdown', e => { e.preventDefault(); fn() })
+
+on('tb-bold',       () => editor.chain().focus().toggleBold().run())
+on('tb-italic',     () => editor.chain().focus().toggleItalic().run())
+on('tb-underline',  () => editor.chain().focus().toggleUnderline().run())
+on('tb-strike',     () => editor.chain().focus().toggleStrike().run())
+on('tb-super',      () => editor.chain().focus().toggleSuperscript().run())
+on('tb-sub',        () => editor.chain().focus().toggleSubscript().run())
+on('tb-al', () => editor.chain().focus().setTextAlign('left').run())
+on('tb-ac', () => editor.chain().focus().setTextAlign('center').run())
+on('tb-ar', () => editor.chain().focus().setTextAlign('right').run())
+on('tb-aj', () => editor.chain().focus().setTextAlign('justify').run())
+on('tb-ul', () => editor.chain().focus().toggleBulletList().run())
+on('tb-ol', () => editor.chain().focus().toggleOrderedList().run())
+on('tb-indent-in',  () => editor.chain().focus().increaseIndent().run())
+on('tb-indent-out', () => editor.chain().focus().decreaseIndent().run())
+on('tb-undo', () => editor.chain().focus().undo().run())
+on('tb-redo', () => editor.chain().focus().redo().run())
+on('tb-save',  handleSaveFile)
+on('tb-new',   handleNewFile)
+on('tb-link',  handleLink)
+
+// Mobile top bar buttons
+on('mbt-new',  handleNewFile)
+on('mbt-save', handleSaveFile)
+
+// Auto-hide mobile top bar on scroll down, reveal on scroll up
+const mbarTopEl = document.getElementById('mbar-top')
+let mbtLastScroll = 0
+document.getElementById('editor-scroll').addEventListener('scroll', () => {
+  if (!mbarTopEl || window.innerWidth > 640) return
+  const st = document.getElementById('editor-scroll').scrollTop
+  const delta = st - mbtLastScroll
+  if (delta > 6 && st > 44) {
+    mbarTopEl.classList.add('mbt-hidden')
+  } else if (delta < -6) {
+    mbarTopEl.classList.remove('mbt-hidden')
+  }
+  mbtLastScroll = st
+}, { passive: true })
+
+document.getElementById('tb-style')?.addEventListener('change', e => {
+  const v = e.target.value
+  if (v === 'p') editor.chain().focus().setParagraph().run()
+  else editor.chain().focus().setHeading({ level: parseInt(v[1]) }).run()
+})
+
+document.getElementById('tb-font')?.addEventListener('change', e => {
+  editor.chain().focus().setFontFamily(e.target.value).run()
+})
+
+document.getElementById('tb-size')?.addEventListener('change', e => {
+  editor.chain().focus().setFontSize(e.target.value + 'pt').run()
+})
+
+document.getElementById('tb-color')?.addEventListener('input', e => {
+  editor.chain().focus().setColor(e.target.value).run()
+  document.getElementById('swatch-color').style.borderBottomColor = e.target.value
+})
+
+document.getElementById('tb-highlight')?.addEventListener('input', e => {
+  editor.chain().focus().setHighlight({ color: e.target.value }).run()
+  document.getElementById('swatch-hl').style.background = e.target.value
+})
+
+// Spacing popover
+const popSpacing = document.getElementById('pop-spacing')
+document.getElementById('tb-spacing')?.addEventListener('click', e => {
+  e.stopPropagation()
+  popSpacing.style.display = popSpacing.style.display === 'none' ? 'block' : 'none'
+})
+popSpacing?.querySelectorAll('[data-lh]').forEach(btn =>
+  btn.addEventListener('click', () => {
+    editor.chain().focus().setLineHeight(btn.dataset.lh).run()
+    popSpacing.style.display = 'none'
+  })
+)
+popSpacing?.querySelectorAll('[data-sp]').forEach(btn =>
+  btn.addEventListener('click', () => {
+    const [b, a] = btn.dataset.sp.split(',').map(Number)
+    editor.chain().focus().setParagraphSpacing({ before: b, after: a }).run()
+    popSpacing.style.display = 'none'
+  })
+)
+
+// Table popover
+const popTable = document.getElementById('pop-table')
+const tblGrid = document.getElementById('tbl-grid')
+const tblLabel = document.getElementById('tbl-label')
+let tblR = 3, tblC = 3
+
+for (let r=0;r<6;r++) for (let c=0;c<8;c++) {
+  const cell = document.createElement('div')
+  cell.className = 'gc'
+  cell.dataset.r = r+1
+  cell.dataset.c = c+1
+  cell.addEventListener('mouseenter', () => {
+    tblR = r+1; tblC = c+1
+    tblLabel.textContent = `${tblR} × ${tblC}`
+    tblGrid.querySelectorAll('.gc').forEach(g => {
+      g.classList.toggle('s', +g.dataset.r <= tblR && +g.dataset.c <= tblC)
+    })
+  })
+  cell.addEventListener('click', () => {
+    editor.chain().focus().insertTable({ rows: tblR, cols: tblC, withHeaderRow: false }).run()
+    popTable.style.display = 'none'
+  })
+  tblGrid.appendChild(cell)
+}
+document.getElementById('tb-table')?.addEventListener('click', e => {
+  e.stopPropagation()
+  popTable.style.display = popTable.style.display === 'none' ? 'block' : 'none'
+})
+
+document.addEventListener('click', () => {
+  popSpacing.style.display = 'none'
+  popTable.style.display = 'none'
+})
+
+// Bubble menu buttons
+onpd('bb-bold',    () => editor.chain().focus().toggleBold().run())
+onpd('bb-italic',  () => editor.chain().focus().toggleItalic().run())
+onpd('bb-underline', () => editor.chain().focus().toggleUnderline().run())
+onpd('bb-link',    handleLink)
+onpd('bb-unlink',  () => editor.chain().focus().unsetLink().run())
+
+// ─────────────────────────────────────────────
+// Mobile bar
+// ─────────────────────────────────────────────
+
+// Tab switching
+document.querySelectorAll('.mtab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'))
+    document.querySelectorAll('.mpanel').forEach(p => p.classList.remove('active'))
+    tab.classList.add('active')
+    document.getElementById(tab.dataset.panel)?.classList.add('active')
+  })
+})
+
+// Text panel
+onpd('mb-bold',      () => editor.chain().focus().toggleBold().run())
+onpd('mb-italic',    () => editor.chain().focus().toggleItalic().run())
+onpd('mb-underline', () => editor.chain().focus().toggleUnderline().run())
+onpd('mb-strike',    () => editor.chain().focus().toggleStrike().run())
+onpd('mb-super',     () => editor.chain().focus().toggleSuperscript().run())
+onpd('mb-sub',       () => editor.chain().focus().toggleSubscript().run())
+
+// Font size stepper
+let mbFontSize = 12
+document.getElementById('mb-size-dec')?.addEventListener('pointerdown', e => {
+  e.preventDefault()
+  mbFontSize = Math.max(6, mbFontSize - 1)
+  editor.chain().focus().setFontSize(mbFontSize + 'pt').run()
+})
+document.getElementById('mb-size-inc')?.addEventListener('pointerdown', e => {
+  e.preventDefault()
+  mbFontSize = Math.min(72, mbFontSize + 1)
+  editor.chain().focus().setFontSize(mbFontSize + 'pt').run()
+})
+
+// Text color
+const mbColorInput = document.getElementById('mb-color-input')
+const mbColorBtn = document.getElementById('mb-color-btn')
+mbColorBtn?.addEventListener('click', () => mbColorInput?.click())
+mbColorInput?.addEventListener('input', () => {
+  editor.chain().focus().setColor(mbColorInput.value).run()
+  mbColorBtn.style.color = mbColorInput.value
+})
+
+// Para panel
+onpd('mb-al', () => editor.chain().focus().setTextAlign('left').run())
+onpd('mb-ac', () => editor.chain().focus().setTextAlign('center').run())
+onpd('mb-ar', () => editor.chain().focus().setTextAlign('right').run())
+onpd('mb-aj', () => editor.chain().focus().setTextAlign('justify').run())
+onpd('mb-ul', () => editor.chain().focus().toggleBulletList().run())
+onpd('mb-ol', () => editor.chain().focus().toggleOrderedList().run())
+onpd('mb-indent-in',  () => editor.chain().focus().indent().run())
+onpd('mb-indent-out', () => editor.chain().focus().outdent().run())
+onpd('mb-spacing', () => openSheet('sheet-spacing'))
+
+// Style panel
+document.getElementById('mb-hstyle')?.addEventListener('change', function() {
+  if (this.value === 'p') editor.chain().focus().setParagraph().run()
+  else editor.chain().focus().toggleHeading({ level: parseInt(this.value[1]) }).run()
+})
+document.getElementById('mb-font-open')?.addEventListener('click', () => openSheet('sheet-font'))
+
+// Build font list in font sheet
+const mbFontList = [
+  'Lustria','Arial','Times New Roman','Georgia','Courier New',
+  'Trebuchet MS','Verdana','Palatino','Garamond','Helvetica',
+  'Impact','Tahoma','Calibri','Cambria','Book Antiqua'
+]
+const fontSheetBody = document.getElementById('sheet-font-body')
+if (fontSheetBody) {
+  mbFontList.forEach(f => {
+    const btn = document.createElement('button')
+    btn.className = 'font-btn'
+    btn.style.fontFamily = `'${f}',sans-serif`
+    btn.textContent = f
+    btn.addEventListener('click', () => {
+      editor.chain().focus().setFontFamily(f).run()
+      const lbl = document.getElementById('mb-font-label')
+      if (lbl) lbl.textContent = f
+      closeSheets()
+    })
+    fontSheetBody.appendChild(btn)
+  })
+}
+
+// Insert panel
+onpd('mb-table', () => openSheet('sheet-table'))
+onpd('mb-link',  handleLink)
+onpd('mb-undo',  () => editor.chain().focus().undo().run())
+onpd('mb-redo',  () => editor.chain().focus().redo().run())
+// File inputs must be triggered from a click event (not pointerdown) — iOS Safari blocks otherwise
+
+on('mb-save',  handleSaveFile)
+
+// Spacing sheet buttons
+document.querySelectorAll('#sheet-spacing [data-lh]').forEach(btn =>
+  btn.addEventListener('click', () => {
+    editor.chain().focus().setLineHeight(btn.dataset.lh).run()
+    closeSheets()
+  })
+)
+document.querySelectorAll('#sheet-spacing [data-sp]').forEach(btn =>
+  btn.addEventListener('click', () => {
+    const [b, a] = btn.dataset.sp.split(',').map(Number)
+    editor.chain().focus().setParagraphSpacing({ before: b, after: a }).run()
+    closeSheets()
+  })
+)
+
+// Build table grid in table sheet
+const sheetTblGrid = document.getElementById('sheet-tbl-grid')
+const sheetTblLabel = document.getElementById('sheet-tbl-label')
+let sTblR = 3, sTblC = 3
+if (sheetTblGrid) {
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 8; c++) {
+    const cell = document.createElement('div')
+    cell.className = 'sheet-gc'
+    cell.dataset.r = r + 1
+    cell.dataset.c = c + 1
+    cell.addEventListener('pointerenter', () => {
+      sTblR = r + 1; sTblC = c + 1
+      if (sheetTblLabel) sheetTblLabel.textContent = `${sTblR} × ${sTblC}`
+      sheetTblGrid.querySelectorAll('.sheet-gc').forEach(g =>
+        g.classList.toggle('s', +g.dataset.r <= sTblR && +g.dataset.c <= sTblC)
+      )
+    })
+    cell.addEventListener('click', () => {
+      editor.chain().focus().insertTable({ rows: sTblR, cols: sTblC, withHeaderRow: false }).run()
+      closeSheets()
+    })
+    sheetTblGrid.appendChild(cell)
+  }
+}
+
+// Sheet open / close
+function openSheet(id) {
+  document.getElementById('sheet-overlay')?.classList.add('open')
+  document.getElementById(id)?.classList.add('open')
+}
+function closeSheets() {
+  document.getElementById('sheet-overlay')?.classList.remove('open')
+  document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('open'))
+}
+document.getElementById('sheet-overlay')?.addEventListener('click', closeSheets)
+
+// Keyboard detection — dock mobile bar above keyboard
+const mbar = document.getElementById('mbar')
+if (window.visualViewport) {
+  const vv = window.visualViewport
+  const update = () => {
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.offsetTop - vv.height))
+    mbar.style.bottom = kb + 'px'
+  }
+  vv.addEventListener('resize', update)
+  vv.addEventListener('scroll', update)
+  update()
+}
+
+// Document scale — always fit viewport width, no horizontal scroll
+const editorCol = document.getElementById('editor-column')
+const editorScroll = document.getElementById('editor-scroll')
+function updateDocScale() {
+  const avail = editorScroll.clientWidth - 16
+  const scale = Math.min(1, avail / 816)
+  editorCol.style.zoom = scale
+}
+window.addEventListener('resize', updateDocScale)
+if (window.visualViewport) window.visualViewport.addEventListener('resize', updateDocScale)
+updateDocScale()
+
+// ─────────────────────────────────────────────
+// File handlers
+// ─────────────────────────────────────────────
+
+function handleNewFile() {
+  if (confirm('Start a new document? Unsaved changes will be lost.')) {
+    editor.commands.setContent('<p></p>')
+    fileName = 'document'
+    docPageSetup = { widthPt:612,heightPt:792,marginTopPt:72,marginRightPt:72,marginBottomPt:72,marginLeftPt:72 }
+    embeddedFonts = []
+    twipScale = 696 / 9360
+    document.getElementById('editor').style.fontFamily = ''
+  }
+}
+
+function handleOpenFile() { document.getElementById('file-input').click() }
+
+function showToast(msg, duration=3000) {
+  const t = document.getElementById('import-toast')
+  t.textContent = msg
+  t.classList.add('show')
+  clearTimeout(t._timer)
+  if (duration > 0) t._timer = setTimeout(() => t.classList.remove('show'), duration)
+}
+
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0]
+  if (!file) return
+  const loadEl = document.getElementById('loading')
+  loadEl.textContent = 'Opening…'
+  loadEl.classList.remove('hide')
+  try {
+    const buf = await file.arrayBuffer()
+    await importDocx(buf)
+    fileName = file.name.replace(/\.docx$/i, '')
+    showToast('✓ ' + fileName + ' opened')
+  } catch (err) {
+    console.error('importDocx failed:', err)
+    showToast('Error: ' + (err?.message ?? String(err)), 0)
+  }
+  loadEl.classList.add('hide')
+  e.target.value = ''
+})
+
+document.getElementById('img-input').addEventListener('change', e => {
+  const file = e.target.files[0]
+  if (!file) return
+  const url = URL.createObjectURL(file)
+  editor.chain().focus().setImage({ src: url }).run()
+  e.target.value = ''
+})
+
+async function handleSaveFile() {
+  const blob = await exportDocx()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = (fileName || 'document') + '.docx'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function handleLink() {
+  const prev = editor.getAttributes('link').href ?? ''
+  const url = window.prompt('URL', prev)
+  if (url === null) return
+  if (url === '') editor.chain().focus().unsetLink().run()
+  else editor.chain().focus().setLink({ href: url }).run()
+}
+
+// ─────────────────────────────────────────────
+// .docx IMPORT
+// ─────────────────────────────────────────────
+
+function xmlKids(el, name) {
+  if (!el) return []
+  return Array.from(el.childNodes).filter(n => n.nodeType===1 && n.localName===name)
+}
+function xmlFirst(el, name) { return xmlKids(el, name)[0] ?? null }
+function xmlAttr(el, name) {
+  if (!el) return null
+  for (let i=0; i<el.attributes.length; i++)
+    if (el.attributes[i].localName===name) return el.attributes[i].value
+  return null
+}
+function parseXml(s) { return new DOMParser().parseFromString(s,'application/xml') }
+
+async function importDocx(buffer) {
+  const files = unzipSync(new Uint8Array(buffer))
+  const get = p => files[p] ? strFromU8(files[p]) : ''
+
+  const documentXml  = get('word/document.xml')
+  const stylesXml    = get('word/styles.xml')
+  const numberingXml = get('word/numbering.xml')
+  const relsXml      = get('word/_rels/document.xml.rels')
+
+  // Fonts — fire-and-forget, never block import
+  embeddedFonts = []
+  for (const [path, data] of Object.entries(files)) {
+    if (!path.startsWith('word/fonts/')) continue
+    const name = path.split('/').pop()
+    const ext = name.split('.').pop()?.toLowerCase()
+    if (!['ttf','otf','woff','woff2'].includes(ext)) continue
+    const family = name.replace(/[-_](regular|bold|italic|light).*$/i,'').replace(/\.[^.]+$/,'')
+    const fontBuf = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+    embeddedFonts.push({ family, blob: new Blob([fontBuf]) })
+    new FontFace(family, fontBuf).load().then(ff => document.fonts.add(ff)).catch(() => {})
+  }
+
+  // Images → blob URLs
+  const images = {}
+  for (const [path, data] of Object.entries(files)) {
+    if (!path.startsWith('word/media/')) continue
+    const name = path.split('/').pop()
+    const ext = name.split('.').pop()?.toLowerCase()
+    const mime = ext==='jpg'||ext==='jpeg' ? 'image/jpeg' : ext==='gif' ? 'image/gif' : ext==='svg' ? 'image/svg+xml' : 'image/png'
+    images[name] = URL.createObjectURL(new Blob([data],{type:mime}))
+  }
+
+  // Rels
+  const rels = {}
+  if (relsXml) {
+    parseXml(relsXml).documentElement.childNodes.forEach(n => {
+      if (n.nodeType===1) rels[n.getAttribute('Id')] = n.getAttribute('Target')
+    })
+  }
+
+  // Styles: styleId → heading level or ''
+  const styles = {}
+  if (stylesXml) {
+    xmlKids(parseXml(stylesXml).documentElement,'style').forEach(s => {
+      const id = xmlAttr(s,'styleId') ?? ''
+      const nameEl = xmlFirst(s,'name')
+      const nm = (xmlAttr(nameEl,'val') ?? '').toLowerCase()
+      const m = nm.match(/^heading\s*(\d)/)
+      styles[id] = m ? m[1] : ''
+    })
+  }
+
+  // Numbering
+  const numbering = {}
+  if (numberingXml) {
+    const ndoc = parseXml(numberingXml).documentElement
+    const abstracts = {}
+    xmlKids(ndoc,'abstractNum').forEach(an => {
+      const id = xmlAttr(an,'abstractNumId')
+      const levels = xmlKids(an,'lvl').map(lvl => ({
+        fmt: xmlAttr(xmlFirst(lvl,'numFmt'),'val') ?? 'decimal',
+        indent: parseInt(xmlAttr(xmlFirst(lvl,'ind'),'left') ?? '720'),
+      }))
+      abstracts[id] = levels
+    })
+    xmlKids(ndoc,'num').forEach(num => {
+      const numId = xmlAttr(num,'numId')
+      const refId = xmlAttr(xmlFirst(num,'abstractNumId'),'val')
+      if (abstracts[refId]) numbering[numId] = abstracts[refId]
+    })
+  }
+
+  // Page setup from sectPr
+  const docEl = parseXml(documentXml).documentElement
+  const bodyEl = xmlFirst(docEl,'body')
+  const sectPr = bodyEl ? xmlFirst(bodyEl,'sectPr') : null
+  if (sectPr) {
+    const pgSz = xmlFirst(sectPr,'pgSz'); const pgMar = xmlFirst(sectPr,'pgMar')
+    const tw = v => v ? Math.round(parseInt(v)/20) : null
+    docPageSetup = {
+      widthPt:  tw(xmlAttr(pgSz,'w'))  ?? 612,
+      heightPt: tw(xmlAttr(pgSz,'h'))  ?? 792,
+      marginTopPt:    tw(xmlAttr(pgMar,'top'))    ?? 72,
+      marginRightPt:  tw(xmlAttr(pgMar,'right'))  ?? 72,
+      marginBottomPt: tw(xmlAttr(pgMar,'bottom')) ?? 72,
+      marginLeftPt:   tw(xmlAttr(pgMar,'left'))   ?? 72,
+    }
+  }
+  // Recalculate scale: 696px rendered content area ÷ document content width in twips
+  const contentTwips = (docPageSetup.widthPt - docPageSetup.marginLeftPt - docPageSetup.marginRightPt) * 20
+  if (contentTwips > 0) twipScale = 696 / contentTwips
+
+  // Document default font (from docDefaults or Normal style)
+  if (stylesXml) {
+    const sdoc = parseXml(stylesXml)
+    const docDef = xmlFirst(sdoc.documentElement, 'docDefaults')
+    const rPrDef = xmlFirst(xmlFirst(docDef, 'rPrDefault'), 'rPr')
+    const rFontsDef = xmlFirst(rPrDef, 'rFonts')
+    const defFont = xmlAttr(rFontsDef, 'ascii') || xmlAttr(rFontsDef, 'hAnsi')
+    document.getElementById('editor').style.fontFamily = defFont ? `'${defFont}',serif` : ''
+  }
+
+  // Parse body
+  const nodes = []
+  if (bodyEl) {
+    for (const child of Array.from(bodyEl.childNodes)) {
+      if (child.nodeType !== 1) continue
+      if (child.localName === 'p') nodes.push(parseParagraph(child, styles, numbering, images, rels))
+      else if (child.localName === 'tbl') nodes.push(parseTable(child, styles, numbering, images, rels))
+    }
+  }
+
+  const content = mergeListNodes(nodes)
+  if (!content.length) content.push({ type:'paragraph' })
+  const ok = editor.commands.setContent({ type:'doc', content })
+  if (!ok) throw new Error('setContent returned false — content may be invalid')
+}
+
+function getMarks(rPr) {
+  const marks = []
+  if (!rPr) return marks
+  const bEl = xmlFirst(rPr,'b'); if (bEl && xmlAttr(bEl,'val')!=='0') marks.push({type:'bold'})
+  const iEl = xmlFirst(rPr,'i'); if (iEl && xmlAttr(iEl,'val')!=='0') marks.push({type:'italic'})
+  const uEl = xmlFirst(rPr,'u'); if (uEl && xmlAttr(uEl,'val')!=='none') marks.push({type:'underline'})
+  const stEl = xmlFirst(rPr,'strike'); if (stEl && xmlAttr(stEl,'val')!=='0') marks.push({type:'strike'})
+  const va = xmlAttr(xmlFirst(rPr,'vertAlign'),'val')
+  if (va==='superscript') marks.push({type:'superscript'})
+  if (va==='subscript')   marks.push({type:'subscript'})
+  const ts = {}
+  const szEl = xmlFirst(rPr,'sz'); if (szEl) ts.fontSize = (parseInt(xmlAttr(szEl,'val')??'24')/2)+'pt'
+  const fEl = xmlFirst(rPr,'rFonts'); const fam = fEl && (xmlAttr(fEl,'ascii')||xmlAttr(fEl,'hAnsi'))
+  if (fam) ts.fontFamily = fam
+  const cEl = xmlFirst(rPr,'color'); const cv = xmlAttr(cEl,'val')
+  if (cv && cv!=='auto' && cv!=='000000') ts.color = '#'+cv
+  if (Object.keys(ts).length) marks.push({type:'textStyle',attrs:ts})
+  const hlEl = xmlFirst(rPr,'highlight'); const hlv = xmlAttr(hlEl,'val')
+  if (hlv) marks.push({type:'highlight',attrs:{color:hlv}})
+  return marks
+}
+
+function parseRunNodes(rEl, marks, images, rels) {
+  const out = []
+  for (const child of Array.from(rEl.childNodes)) {
+    if (child.nodeType!==1) continue
+    if (child.localName==='t') {
+      const txt = child.textContent ?? ''
+      if (txt) out.push({ type:'text', text:txt, marks: marks.length ? marks : undefined })
+    } else if (child.localName==='br' && xmlAttr(child,'type')==='textWrapping') {
+      out.push({ type:'hardBreak' })
+    } else if (child.localName==='drawing') {
+      // find blip
+      let rId = null
+      const walk = el => {
+        for (let i=0;i<el.attributes.length;i++) if (el.attributes[i].localName==='embed') rId=el.attributes[i].value
+        for (const c of el.childNodes) if (c.nodeType===1) walk(c)
+      }
+      walk(child)
+      if (rId) {
+        const target = rels[rId] ?? ''
+        const fname = target.split('/').pop()
+        const src = images[fname]
+        if (src) out.push({ type:'image', attrs:{ src } })
+      }
+    }
+  }
+  return out
+}
+
+function parseParagraph(pEl, styles, numbering, images, rels) {
+  const pPr = xmlFirst(pEl,'pPr')
+  const styleId = xmlAttr(xmlFirst(pPr,'pStyle'),'val') ?? ''
+  const headingLvl = styleId ? (styles[styleId] ?? '') : ''
+  const type = headingLvl ? 'heading' : 'paragraph'
+
+  const jc = xmlAttr(xmlFirst(pPr,'jc'),'val')
+  const textAlign = jc==='both'?'justify': jc==='center'?'center': jc==='right'?'right': jc==='left'?'left': null
+  const spEl = xmlFirst(pPr,'spacing')
+  const lhv = xmlAttr(spEl,'line'); const lineHeight = lhv ? String(parseInt(lhv)/240) : null
+  const spaceBefore = spEl ? Math.round(parseInt(xmlAttr(spEl,'before')??'0')/20) : 0
+  const spaceAfter  = spEl ? Math.round(parseInt(xmlAttr(spEl,'after')??'0')/20)  : 0
+  const indEl = xmlFirst(pPr,'ind')
+  const indLeft   = indEl ? Math.round(parseInt(xmlAttr(indEl,'left')??'0')/20)    : 0
+  const firstLine = indEl ? Math.round(parseInt(xmlAttr(indEl,'firstLine')??'0')/20) : 0
+  const hanging   = indEl ? Math.round(parseInt(xmlAttr(indEl,'hanging')??'0')/20)  : 0
+  const textIndent = firstLine || (hanging ? -hanging : 0)
+
+  const numId = xmlAttr(xmlFirst(xmlFirst(pPr,'numPr'),'numId'),'val')
+  const ilvl  = parseInt(xmlAttr(xmlFirst(xmlFirst(pPr,'numPr'),'ilvl'),'val') ?? '0')
+
+  const attrs = {}
+  if (headingLvl) attrs.level = parseInt(headingLvl)
+  if (textAlign)  attrs.textAlign = textAlign
+  if (lineHeight) attrs.lineHeight = lineHeight
+  if (spaceBefore) attrs.spaceBefore = spaceBefore
+  if (spaceAfter)  attrs.spaceAfter = spaceAfter
+  if (indLeft)     attrs.indentLeft = indLeft
+  if (textIndent)  attrs.textIndent = textIndent
+
+  const content = []
+  for (const child of Array.from(pEl.childNodes)) {
+    if (child.nodeType!==1) continue
+    if (child.localName==='r') {
+      content.push(...parseRunNodes(child, getMarks(xmlFirst(child,'rPr')), images, rels))
+    } else if (child.localName==='hyperlink') {
+      const href = rels[xmlAttr(child,'id')] ?? (xmlAttr(child,'anchor') ? '#'+xmlAttr(child,'anchor') : '')
+      for (const r of xmlKids(child,'r')) {
+        const ms = [...getMarks(xmlFirst(r,'rPr')), {type:'link',attrs:{href}}]
+        content.push(...parseRunNodes(r, ms, images, rels))
+      }
+    }
+  }
+
+  if (numId && numbering[numId]) {
+    const level = numbering[numId][ilvl] ?? numbering[numId][0]
+    const isOrdered = level.fmt !== 'bullet'
+    return { type: isOrdered?'orderedList':'bulletList', content:[{ type:'listItem', content:[{type,attrs,content}] }] }
+  }
+  return { type, attrs, content }
+}
+
+function parseTable(tblEl, styles, numbering, images, rels) {
+  return {
+    type: 'table',
+    content: xmlKids(tblEl,'tr').map(tr => ({
+      type: 'tableRow',
+      content: xmlKids(tr,'tc').map(tc => {
+        const tcPr = xmlFirst(tc,'tcPr')
+        const colspan = parseInt(xmlAttr(xmlFirst(tcPr,'gridSpan'),'val') ?? '1')
+        const tcW = xmlFirst(tcPr,'tcW')
+        const wTwips = tcW ? parseInt(xmlAttr(tcW,'w') ?? '0') : 0
+        const colwidth = wTwips > 0 ? [Math.max(20, Math.round(wTwips * twipScale))] : null
+        return {
+          type: 'tableCell',
+          attrs: { colspan, rowspan: 1, colwidth },
+          content: xmlKids(tc,'p').map(p => parseParagraph(p, styles, numbering, images, rels))
+        }
+      })
+    }))
+  }
+}
+
+function mergeListNodes(nodes) {
+  const out = []
+  for (const n of nodes) {
+    const prev = out[out.length-1]
+    if (prev && prev.type===n.type && (n.type==='orderedList'||n.type==='bulletList')) {
+      prev.content = [...prev.content, ...n.content]
+    } else out.push(n)
+  }
+  return out
+}
+
+// ─────────────────────────────────────────────
+// .docx EXPORT (manual OOXML)
+// ─────────────────────────────────────────────
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+
+function alignVal(a) {
+  return a==='justify'?'both': a==='center'?'center': a==='right'?'right': 'left'
+}
+
+function buildRunXml(node) {
+  if (node.type==='hardBreak') return `<w:r><w:br w:type="textWrapping"/></w:r>`
+  if (node.type!=='text') return ''
+  const ms = node.marks ?? []
+  const bold = ms.some(m=>m.type==='bold')
+  const italic = ms.some(m=>m.type==='italic')
+  const underline = ms.some(m=>m.type==='underline')
+  const strike = ms.some(m=>m.type==='strike')
+  const sup = ms.some(m=>m.type==='superscript')
+  const sub = ms.some(m=>m.type==='subscript')
+  const ts = ms.find(m=>m.type==='textStyle')?.attrs ?? {}
+  const hl = ms.find(m=>m.type==='highlight')?.attrs?.color
+
+  let rPr = ''
+  if (ts.fontFamily) rPr += `<w:rFonts w:ascii="${esc(ts.fontFamily)}" w:hAnsi="${esc(ts.fontFamily)}"/>`
+  if (bold)      rPr += '<w:b/>'
+  if (italic)    rPr += '<w:i/>'
+  if (underline) rPr += '<w:u w:val="single"/>'
+  if (strike)    rPr += '<w:strike/>'
+  if (sup)       rPr += '<w:vertAlign w:val="superscript"/>'
+  if (sub)       rPr += '<w:vertAlign w:val="subscript"/>'
+  if (ts.fontSize) {
+    const half = Math.round(parseFloat(ts.fontSize)*2)
+    rPr += `<w:sz w:val="${half}"/><w:szCs w:val="${half}"/>`
+  }
+  if (ts.color) rPr += `<w:color w:val="${esc(ts.color.replace('#',''))}"/>`
+  if (hl) {
+    const hlMap = { yellow:'yellow', cyan:'cyan', magenta:'magenta', red:'red', green:'green', blue:'blue' }
+    const hlWord = hlMap[hl.toLowerCase()] ?? 'yellow'
+    rPr += `<w:highlight w:val="${hlWord}"/>`
+  }
+  const text = esc(node.text ?? '')
+  const preserve = (node.text??'').match(/^\s|\s$/) ? ' xml:space="preserve"' : ''
+  const linkMark = ms.find(m=>m.type==='link')
+  const run = `<w:r>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}<w:t${preserve}>${text}</w:t></w:r>`
+  if (linkMark?.attrs?.href) {
+    return `<w:hyperlink r:id="_" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${run}</w:hyperlink>`
+  }
+  return run
+}
+
+function buildParaXml(node, numId, level) {
+  const attrs = node.attrs ?? {}
+  let pPr = ''
+  if (node.type==='heading') {
+    const lvl = attrs.level ?? 1
+    pPr += `<w:pStyle w:val="Heading${lvl}"/>`
+  }
+  if (numId !== undefined) {
+    pPr += `<w:numPr><w:ilvl w:val="${level}"/><w:numId w:val="${numId}"/></w:numPr>`
+  }
+  const align = attrs.textAlign; if (align) pPr += `<w:jc w:val="${alignVal(align)}"/>`
+  const lh = attrs.lineHeight; if (lh) pPr += `<w:spacing w:line="${Math.round(parseFloat(lh)*240)}" w:lineRule="auto"/>`
+  const sb = attrs.spaceBefore, sa = attrs.spaceAfter
+  if (sb || sa) pPr += `<w:spacing w:before="${Math.round((sb||0)*20)}" w:after="${Math.round((sa||0)*20)}"/>`
+  const il = attrs.indentLeft, ti = attrs.textIndent
+  if (il || ti) {
+    const fl = ti > 0 ? ` w:firstLine="${Math.round(ti*20)}"` : ''
+    const hg = ti < 0 ? ` w:hanging="${Math.round(-ti*20)}"` : ''
+    pPr += `<w:ind w:left="${Math.round((il||0)*20)}"${fl}${hg}/>`
+  }
+  const content = (node.content??[]).map(n=>buildRunXml(n)).join('')
+  return `<w:p><w:pPr>${pPr}</w:pPr>${content}</w:p>`
+}
+
+let _numCounter = 1
+
+function buildBlockXml(node) {
+  switch (node.type) {
+    case 'paragraph': return buildParaXml(node)
+    case 'heading':   return buildParaXml(node)
+    case 'bulletList':
+    case 'orderedList': {
+      const numId = _numCounter++
+      return (node.content??[]).flatMap((item,i) =>
+        (item.content??[]).map(inner => buildParaXml(inner, numId, 0))
+      ).join('')
+    }
+    case 'table': return buildTableXml(node)
+    default: return `<w:p><w:pPr/></w:p>`
+  }
+}
+
+function buildTableXml(node) {
+  let rows = ''
+  for (const tr of (node.content??[])) {
+    let cells = ''
+    for (const tc of (tr.content??[])) {
+      const cs = tc.attrs?.colspan ?? 1
+      const inner = (tc.content??[]).map(n=>buildBlockXml(n)).join('')
+      const tcPr = cs > 1 ? `<w:tcPr><w:gridSpan w:val="${cs}"/></w:tcPr>` : '<w:tcPr/>'
+      cells += `<w:tc>${tcPr}${inner}</w:tc>`
+    }
+    rows += `<w:tr>${cells}</w:tr>`
+  }
+  return `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/></w:tblPr>${rows}</w:tbl>`
+}
+
+const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml"   ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+</Types>`
+
+const DOT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`
+
+const WORD_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"   Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+</Relationships>`
+
+const SETTINGS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings ${W}><w:defaultTabStop w:val="720"/></w:settings>`
+
+function buildStylesXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles ${W} xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" w14:Ignorable="w14">
+  <w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="24"/></w:rPr></w:rPrDefault></w:docDefaults>
+  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/>
+    <w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/>
+    <w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/>
+    <w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading4"><w:name w:val="heading 4"/>
+    <w:pPr><w:outlineLvl w:val="3"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading5"><w:name w:val="heading 5"/>
+    <w:pPr><w:outlineLvl w:val="4"/></w:pPr><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading6"><w:name w:val="heading 6"/>
+    <w:pPr><w:outlineLvl w:val="5"/></w:pPr><w:rPr><w:b/><w:sz w:val="20"/></w:rPr></w:style>
+</w:styles>`
+}
+
+async function exportDocx() {
+  _numCounter = 1
+  const { widthPt, heightPt, marginTopPt, marginRightPt, marginBottomPt, marginLeftPt } = docPageSetup
+  const pt2tw = p => Math.round(p * 20)
+
+  const json = editor.getJSON()
+  const bodyContent = (json.content ?? []).map(n => buildBlockXml(n)).join('\n')
+
+  const sectPr = `<w:sectPr>
+    <w:pgSz w:w="${pt2tw(widthPt)}" w:h="${pt2tw(heightPt)}"/>
+    <w:pgMar w:top="${pt2tw(marginTopPt)}" w:right="${pt2tw(marginRightPt)}"
+             w:bottom="${pt2tw(marginBottomPt)}" w:left="${pt2tw(marginLeftPt)}"/>
+  </w:sectPr>`
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document ${W}
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>${bodyContent}${sectPr}</w:body>
+</w:document>`
+
+  const enc = s => strToU8(s)
+  const zipped = zipSync({
+    '[Content_Types].xml':       enc(CONTENT_TYPES),
+    '_rels/.rels':                enc(DOT_RELS),
+    'word/_rels/document.xml.rels': enc(WORD_RELS),
+    'word/document.xml':         enc(documentXml),
+    'word/styles.xml':           enc(buildStylesXml()),
+    'word/settings.xml':         enc(SETTINGS_XML),
+  }, { level: 6 })
+
+  return new Blob([zipped], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+}
+
+</script>
+</body>
+</html>
