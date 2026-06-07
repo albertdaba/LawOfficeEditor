@@ -64,7 +64,8 @@ select.tb.size{width:54px}
 /* ── Editor scroll ── */
 #editor-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 14px 40px;
   -webkit-overflow-scrolling:touch}
-#editor-column{width:816px;margin:0 auto;background:#fff;padding:48px 60px;
+#editor-scale{width:816px;margin:0 auto;transform-origin:top left}
+#editor-column{width:816px;background:#fff;padding:48px 60px;
   box-shadow:0 2px 10px rgba(0,0,0,.12);border-radius:2px}
 
 /* ── ProseMirror ── */
@@ -321,8 +322,10 @@ select.mb-sel{height:40px;border:1px solid #ccc;border-radius:6px;
 
   <!-- EDITOR -->
   <div id="editor-scroll">
-    <div id="editor-column">
-      <div id="editor"></div>
+    <div id="editor-scale">
+      <div id="editor-column">
+        <div id="editor"></div>
+      </div>
     </div>
   </div>
 
@@ -1053,16 +1056,27 @@ if (window.visualViewport) {
 // document.documentElement.clientWidth is the CSS layout viewport width;
 // it is stable (does NOT change when the virtual keyboard opens) and is
 // always correct on both desktop and mobile.
+// We use transform:scale() (NOT css zoom) because iOS Safari does not apply
+// `zoom` to layout — it squeezes the column instead, breaking line-wrap and
+// font proportions. transform:scale() scales the rendered column uniformly so
+// text wraps at exactly the same points as desktop, just smaller.
 const editorCol = document.getElementById('editor-column')
+const editorScale = document.getElementById('editor-scale')
+let _docScale = 1
 function updateDocScale() {
   const vpW = document.documentElement.clientWidth
   if (!vpW) return  // layout not yet computed — rAF will retry
-  const scale = vpW >= 816 ? 1 : vpW / 816
-  editorCol.style.zoom = scale
+  _docScale = vpW >= 816 ? 1 : vpW / 816
+  editorScale.style.transform = _docScale === 1 ? '' : `scale(${_docScale})`
+  // transform doesn't shrink the layout box, so collapse it manually:
+  // width so the scaled 816px column fits and centers; height so the
+  // scroll area matches the visually-scaled content height.
+  editorScale.style.width = (816 * _docScale) + 'px'
+  editorScale.style.height = _docScale === 1 ? '' : (editorCol.offsetHeight * _docScale) + 'px'
 }
-// Resize fires on orientation change and window resize; NOT on keyboard show/hide
 window.addEventListener('resize', updateDocScale)
-// Run immediately, then again after first paint to catch any late layout pass
+// Re-collapse height whenever document content changes height
+if (window.ResizeObserver) new ResizeObserver(updateDocScale).observe(editorCol)
 updateDocScale()
 requestAnimationFrame(updateDocScale)
 
